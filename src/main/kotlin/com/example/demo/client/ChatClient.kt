@@ -1,11 +1,10 @@
-package com.example.demo
+package com.example.demo.client
 
 import com.example.demo.grpc.ChatServiceGrpcKt
 import com.example.demo.grpc.ChatMessage
 import io.grpc.ManagedChannelBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.Scanner
@@ -28,6 +27,8 @@ class ChatClient {
             client.chat(messageChannel.receiveAsFlow()).collect { message ->
                 if (message.user != clientName) {
                     println("${message.user}: ${message.message}")
+                }else{
+                    println("You: ${message.message}")
                 }
             }
         }
@@ -50,7 +51,5 @@ class ChatClient {
 fun main() {
     val client = ChatClient()
     client.start()
-
-    // Keep the main thread alive
     Thread.currentThread().join()
 }

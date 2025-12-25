@@ -12,7 +12,7 @@ version = "0.0.1-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -58,7 +58,7 @@ tasks.withType<Test> {
 }
 
 application {
-    mainClass.set("com.example.demo.ChatServerKt")
+    mainClass.set("com.example.demo.MainKt")
 }
 
 tasks.named<JavaExec>("run") {
@@ -67,7 +67,7 @@ tasks.named<JavaExec>("run") {
 
 tasks.register<JavaExec>("runClient") {
     group = "application"
-    mainClass.set("com.example.demo.ChatClientKt")
+    mainClass.set("com.example.demo.client.ChatClientKt")
     classpath = sourceSets["main"].runtimeClasspath
     standardInput = System.`in`
 }

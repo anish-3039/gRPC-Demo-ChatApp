@@ -1,25 +1,21 @@
-package com.example.demo
+package com.example.demo.server
 
-import com.example.demo.grpc.ChatServiceGrpcKt
 import com.example.demo.grpc.ChatMessage
+import com.example.demo.repository.MessageRepository
+import com.example.demo.service.ChatServiceImpl
 import io.grpc.ServerBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import io.grpc.Server
 import java.util.Scanner
 
-class ChatServer {
-    private val chatHistory = MutableSharedFlow<ChatMessage>()
-    private lateinit var serverName: String
-
-    private val server = ServerBuilder.forPort(50051)
-        .addService(ChatServiceImpl(chatHistory))
-        .build()
-
+class ChatServer (
+    private val server : Server,
+    private val repository : MessageRepository,
+){
+    private lateinit var serverName : String
     fun start() {
         server.start()
         println("Enter your name:")
@@ -33,7 +29,7 @@ class ChatServer {
 
         // Coroutine to listen to chat history and print to server console
         CoroutineScope(Dispatchers.Default).launch {
-            chatHistory.collect { message ->
+            repository.messages.collect { message ->
                 if (message.user == serverName) {
                     println("You: ${message.message}")
                 } else {
@@ -65,25 +61,9 @@ class ChatServer {
                     .setUser(serverName)
                     .setMessage(message)
                     .build()
-                chatHistory.emit(chatMessage)
+
+                repository.broadcast(chatMessage)
             }
         }
     }
-
-    private class ChatServiceImpl(private val chatHistory: MutableSharedFlow<ChatMessage>) : ChatServiceGrpcKt.ChatServiceCoroutineImplBase() {
-        override fun chat(requests: Flow<ChatMessage>): Flow<ChatMessage> {
-            CoroutineScope(Dispatchers.Default).launch {
-                requests.collect { message ->
-                    chatHistory.emit(message)
-                }
-            }
-            return chatHistory.asSharedFlow()
-        }
-    }
-}
-
-fun main() {
-    val server = ChatServer()
-    server.start()
-    server.blockUntilShutdown()
 }
