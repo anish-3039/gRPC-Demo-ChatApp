@@ -9,17 +9,21 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.Scanner
 import kotlinx.coroutines.channels.Channel
+import com.example.demo.config.ClientConfig
 
-class ChatClient {
+class ChatClient(private val config: ClientConfig) {
     private lateinit var clientName: String
+
+    private val channel = ManagedChannelBuilder
+        .forAddress(config.host, config.port)
+        .usePlaintext().build()
+
+    private val client = ChatServiceGrpcKt.ChatServiceCoroutineStub(channel)
 
     fun start() {
         println("Enter your name:")
         val scanner = Scanner(System.`in`)
         clientName = scanner.nextLine()
-
-        val channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build()
-        val client = ChatServiceGrpcKt.ChatServiceCoroutineStub(channel)
 
         val messageChannel = Channel<ChatMessage>(Channel.UNLIMITED)
 
@@ -48,8 +52,3 @@ class ChatClient {
     }
 }
 
-fun main() {
-    val client = ChatClient()
-    client.start()
-    Thread.currentThread().join()
-}
