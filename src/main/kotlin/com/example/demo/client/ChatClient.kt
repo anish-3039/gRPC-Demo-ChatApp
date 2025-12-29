@@ -10,13 +10,18 @@ import kotlinx.coroutines.launch
 import java.util.Scanner
 import kotlinx.coroutines.channels.Channel
 import com.example.demo.config.ClientConfig
+import com.example.demo.interceptor.JitterInterceptor
+import com.example.demo.interceptor.RandomJitterStrategy
 
 class ChatClient(private val config: ClientConfig) {
     private lateinit var clientName: String
+    val myStrategy = RandomJitterStrategy(1000,5000)
 
     private val channel = ManagedChannelBuilder
         .forAddress(config.host, config.port)
-        .usePlaintext().build()
+        .usePlaintext()
+        .intercept(JitterInterceptor(myStrategy))
+        .build()
 
     private val client = ChatServiceGrpcKt.ChatServiceCoroutineStub(channel)
 
