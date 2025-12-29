@@ -1,21 +1,28 @@
 package com.example.demo.client
 
-import com.example.demo.grpc.ChatServiceGrpcKt
+import com.example.demo.config.ClientConfig
 import com.example.demo.grpc.ChatMessage
+import com.example.demo.grpc.ChatServiceGrpcKt
+import com.example.demo.handler.InputHandler
+import com.example.demo.interceptor.JitterInterceptor
+import com.example.demo.interceptor.RandomJitterStrategy
+import com.example.demo.io.ConsoleIO
 import io.grpc.ManagedChannelBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import java.util.Scanner
-import kotlinx.coroutines.channels.Channel
-import com.example.demo.config.ClientConfig
-import com.example.demo.interceptor.JitterInterceptor
-import com.example.demo.interceptor.RandomJitterStrategy
 
-class ChatClient(private val config: ClientConfig) {
+class ChatClient(
+    private val config: ClientConfig,
+    private val consoleIO: ConsoleIO,
+    private val inputHandler: InputHandler,
+    private val messageHandler: ClientMessageHandler,
+    private val messageChannel: Channel<ChatMessage>
+) {
     private lateinit var clientName: String
-    val myStrategy = RandomJitterStrategy(1000,5000)
+    private val myStrategy = RandomJitterStrategy(1000, 5000)
 
     private val channel = ManagedChannelBuilder
         .forAddress(config.host, config.port)
@@ -26,33 +33,17 @@ class ChatClient(private val config: ClientConfig) {
     private val client = ChatServiceGrpcKt.ChatServiceCoroutineStub(channel)
 
     fun start() {
-        println("Enter your name:")
-        val scanner = Scanner(System.`in`)
-        clientName = scanner.nextLine()
+        clientName = consoleIO.readUsername()
 
-        val messageChannel = Channel<ChatMessage>(Channel.UNLIMITED)
-
+        // Launch coroutine to receive messages from server
         CoroutineScope(Dispatchers.IO).launch {
-            client.chat(messageChannel.receiveAsFlow()).collect { message ->
-                if (message.user != clientName) {
-                    println("${message.user}: ${message.message}")
-                }else{
-                    println("You: ${message.message}")
-                }
-            }
+            val messageStream = client.chat(messageChannel.receiveAsFlow())
+            messageHandler.handleIncomingMessages(messageStream, clientName)
         }
 
+        // Launch coroutine to send user input to server
         CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-                val message = scanner.nextLine()
-                if (message.isNotEmpty()) {
-                    val chatMessage = ChatMessage.newBuilder()
-                        .setUser(clientName)
-                        .setMessage(message)
-                        .build()
-                    messageChannel.send(chatMessage)
-                }
-            }
+            inputHandler.handleInput(clientName)
         }
     }
 }
